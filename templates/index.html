@@ -45,7 +45,6 @@
     overflow-x: hidden;
   }
 
-  /* Subtle grid background */
   body::before {
     content: '';
     position: fixed;
@@ -58,16 +57,15 @@
     z-index: 0;
   }
 
-  /* ── SCROLLBAR ── */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-  /* ── LAYOUT ── */
+  
   .app { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 0 28px 60px; }
 
-  /* ── HEADER ── */
+  
   .header {
     display: flex;
     align-items: center;
@@ -136,7 +134,7 @@
     50% { opacity: 0.5; box-shadow: 0 0 12px var(--green); }
   }
 
-  /* ── INPUT CARD ── */
+  
   .scan-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -262,7 +260,7 @@
     cursor: not-allowed;
   }
 
-  /* ── PROGRESS BAR ── */
+  
   .progress-bar-wrap {
     margin-top: 18px;
     display: none;
@@ -293,7 +291,7 @@
     color: var(--muted);
   }
 
-  /* ── MAIN SPLIT ── */
+  
   .main-split {
     display: grid;
     grid-template-columns: 1fr 380px;
@@ -301,7 +299,7 @@
     align-items: start;
   }
 
-  /* ── PANEL ── */
+
   .panel {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -352,7 +350,7 @@
     font-weight: 500;
   }
 
-  /* ── RESULTS ── */
+  
   .results-body {
     padding: 16px;
     overflow-y: auto;
@@ -386,7 +384,7 @@
     line-height: 1.7;
   }
 
-  /* ── VULN CARD ── */
+  
   .vuln-card {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -516,7 +514,7 @@
     line-height: 1.65;
   }
 
-  /* ── CHAT ── */
+ 
   .chat-panel {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -630,7 +628,7 @@
     background: #6ba3f9;
   }
 
-  /* ── SPINNER ── */
+  
   .spinner {
     width: 14px; height: 14px;
     border: 2px solid rgba(10,26,18,0.3);
@@ -642,7 +640,7 @@
 
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── TYPING INDICATOR ── */
+
   .typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
   .typing span {
     width: 5px; height: 5px;
@@ -657,7 +655,7 @@
     40% { transform: translateY(-5px); }
   }
 
-  /* ── STATS ROW ── */
+ 
   .stats-row {
     display: flex;
     gap: 10px;
@@ -696,7 +694,7 @@
   .stat-chip.c-blue   .stat-num { color: var(--blue); }
   .stat-chip.c-green  .stat-num { color: var(--green); }
 
-  /* ── WELCOME MSG ── */
+
   .welcome-list {
     margin: 10px 0 0 0;
     padding-left: 0;
@@ -720,7 +718,7 @@
     font-size: 11px;
   }
 
-  /* ── OWASP TAG ── */
+ 
   .owasp-tag {
     display: inline-flex;
     align-items: center;
@@ -745,7 +743,7 @@
 <body>
 <div class="app">
 
-  <!-- HEADER -->
+
   <header class="header">
     <div class="header-left">
       <div class="logo-mark">⌘S</div>
@@ -759,7 +757,7 @@
     </div>
   </header>
 
-  <!-- SCAN CARD -->
+ 
   <div class="scan-card">
     <div class="scan-card-header">
       <div class="card-title">Configure Scan Target</div>
@@ -791,7 +789,7 @@
     </div>
   </div>
 
-  <!-- STATS ROW (hidden until scan) -->
+  
   <div class="stats-row" id="statsRow" style="display:none;">
     <div class="stat-chip c-red">
       <div class="stat-num" id="statCritical">0</div>
@@ -819,10 +817,10 @@
     </div>
   </div>
 
-  <!-- MAIN SPLIT -->
+ 
   <div class="main-split">
 
-    <!-- LEFT: Results -->
+    
     <div class="panel">
       <div class="panel-head">
         <div class="panel-title">
@@ -839,7 +837,7 @@
       </div>
     </div>
 
-    <!-- RIGHT: Chat -->
+    
     <div class="chat-panel panel">
       <div class="panel-head">
         <div class="panel-title">
@@ -873,7 +871,7 @@
 <script>
   let scanId = null;
 
-  /* ── SCAN ── */
+ 
   async function startScan() {
     const url = document.getElementById('apiUrl').value.trim();
     if (!url) { flashInput('apiUrl'); return; }
@@ -901,7 +899,7 @@
         showError(data.error || 'Scan failed.');
       }
     } catch (e) {
-      // Demo mode — render mock data
+    
       renderResults(mockReport(url, eps));
     } finally {
       setScanning(false);
@@ -950,12 +948,12 @@
     if (!on) finishProgress();
   }
 
-  /* ── RENDER RESULTS ── */
+  
   function renderResults(report) {
     const counts = { critical:0, high:0, medium:0, low:0 };
     report.alerts.forEach(a => { if (counts[a.severity] !== undefined) counts[a.severity]++; });
 
-    // Stats
+    
     document.getElementById('statCritical').textContent  = counts.critical;
     document.getElementById('statHigh').textContent      = counts.high;
     document.getElementById('statMedium').textContent    = counts.medium;
@@ -974,7 +972,7 @@
       return;
     }
 
-    // Sort: critical → high → medium → low
+  
     const order = { critical: 0, high: 1, medium: 2, low: 3 };
     report.alerts.sort((a, b) => (order[a.severity] ?? 4) - (order[b.severity] ?? 4));
 
@@ -1044,7 +1042,7 @@
     addChat('⚠ ' + escHtml(msg), false);
   }
 
-  /* ── CHAT ── */
+  
   async function sendChat() {
     const input = document.getElementById('chatInput');
     const msg   = input.value.trim();
@@ -1101,7 +1099,7 @@
     return 'I can help you understand vulnerabilities, prioritize fixes, and implement security best practices. What specific issue would you like to explore?';
   }
 
-  /* ── MOCK DATA (demo when no backend) ── */
+  
   function mockReport(url, eps) {
     return {
       timestamp:          new Date().toISOString(),

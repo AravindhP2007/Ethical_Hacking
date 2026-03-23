@@ -1,0 +1,23 @@
+# API Vulnerability Scanner Dependencies
+
+# Core dependencies
+requests>=2.31.0
+urllib3>=2.0.0
+
+# Web application dependencies
+Flask>=3.0.0
+Flask-CORS>=4.0.0
+
+# Testing dependencies (optional)
+pytest>=7.4.0
+pytest-cov>=4.1.0
+hypothesis>=6.82.0
+
+# Report generation (optional)
+# reportlab>=4.0.0  # Uncomment for PDF generation
+# weasyprint>=59.0  # Alternative for PDF generation
+
+# Development dependencies (optional)
+black>=23.7.0
+flake8>=6.1.0
+mypy>=1.5.0

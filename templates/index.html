@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Security Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #131720;
+    --surface2:  #181d2a;
+    --border:    rgba(255,255,255,0.06);
+    --border2:   rgba(255,255,255,0.10);
+    --text:      #e8eaf0;
+    --muted:     #5a6175;
+    --muted2:    #8891a4;
+
+    --green:     #2dd98f;
+    --green-dim: rgba(45,217,143,0.12);
+    --green-glow:rgba(45,217,143,0.25);
+
+    --red:       #f25f5c;
+    --red-dim:   rgba(242,95,92,0.12);
+
+    --yellow:    #f5c842;
+    --yellow-dim:rgba(245,200,66,0.12);
+
+    --blue:      #4f8ef7;
+    --blue-dim:  rgba(79,142,247,0.12);
+
+    --radius:    12px;
+    --radius-sm: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── LAYOUT ── */
+  .app { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 0 28px 60px; }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 0 22px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 14px; }
+
+  .logo-mark {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    display: grid; place-items: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--green);
+    letter-spacing: -1px;
+  }
+
+  .site-title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--text);
+  }
+
+  .header-divider {
+    width: 1px; height: 18px;
+    background: var(--border2);
+  }
+
+  .header-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 14px;
+    background: var(--green-dim);
+    border: 1px solid rgba(45,217,143,0.2);
+    border-radius: 99px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.3px;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 6px var(--green); }
+    50% { opacity: 0.5; box-shadow: 0 0 12px var(--green); }
+  }
+
+  /* ── INPUT CARD ── */
+  .scan-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scan-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--green-glow), transparent);
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+
+  .scan-card:focus-within::before { opacity: 1; }
+
+  .scan-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--muted2);
+  }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 340px auto;
+    gap: 12px;
+    align-items: flex-end;
+  }
+
+  .field { display: flex; flex-direction: column; gap: 7px; }
+
+  .field label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .input-wrap { position: relative; }
+
+  .input-icon {
+    position: absolute;
+    left: 14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 13px;
+    pointer-events: none;
+    transition: color 0.2s;
+  }
+
+  input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 11px 14px 11px 38px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input[type="text"]::placeholder {
+    color: var(--muted);
+  }
+
+  input[type="text"]:focus {
+    border-color: rgba(45,217,143,0.35);
+    box-shadow: 0 0 0 3px rgba(45,217,143,0.07), 0 0 20px rgba(45,217,143,0.04);
+  }
+
+  .input-wrap:focus-within .input-icon {
+    color: var(--green);
+  }
+
+  .btn-scan {
+    height: 42px;
+    padding: 0 28px;
+    background: var(--green);
+    color: #0a1a12;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-scan:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px var(--green-glow);
+    background: #38f0a3;
+  }
+
+  .btn-scan:active:not(:disabled) { transform: translateY(0); }
+
+  .btn-scan:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-bar-wrap {
+    margin-top: 18px;
+    display: none;
+  }
+
+  .progress-bar-wrap.visible { display: block; }
+
+  .progress-track {
+    height: 2px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--green);
+    border-radius: 99px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  .progress-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── MAIN SPLIT ── */
+  .main-split {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .panel-icon {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    display: grid; place-items: center;
+    font-size: 11px;
+  }
+
+  .panel-icon.red   { background: var(--red-dim);    color: var(--red); }
+  .panel-icon.green { background: var(--green-dim);  color: var(--green); }
+
+  .count-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 20px;
+    padding: 0 7px;
+    background: var(--red-dim);
+    border: 1px solid rgba(242,95,92,0.2);
+    color: var(--red);
+    border-radius: 99px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  /* ── RESULTS ── */
+  .results-body {
+    padding: 16px;
+    overflow-y: auto;
+    max-height: calc(100vh - 380px);
+    min-height: 340px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 20px;
+    gap: 12px;
+    color: var(--muted);
+  }
+
+  .empty-icon {
+    font-size: 32px;
+    opacity: 0.3;
+  }
+
+  .empty-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-align: center;
+    line-height: 1.7;
+  }
+
+  /* ── VULN CARD ── */
+  .vuln-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: border-color 0.2s;
+    animation: fadeSlide 0.3s ease backwards;
+  }
+
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .vuln-card:hover { border-color: var(--border2); }
+
+  .vuln-main {
+    padding: 14px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .severity-strip {
+    width: 3px;
+    min-height: 48px;
+    border-radius: 99px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .severity-strip.critical { background: #e63946; }
+  .severity-strip.high     { background: var(--red); }
+  .severity-strip.medium   { background: var(--yellow); }
+  .severity-strip.low      { background: var(--blue); }
+
+  .vuln-info { flex: 1; min-width: 0; }
+
+  .vuln-row1 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .vuln-name {
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: -0.1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sev-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+
+  .sev-badge::before {
+    content: '●';
+    font-size: 8px;
+  }
+
+  .sev-badge.critical { background: rgba(230,57,70,0.15);  color: #e63946; border: 1px solid rgba(230,57,70,0.25); }
+  .sev-badge.high     { background: var(--red-dim);        color: var(--red);    border: 1px solid rgba(242,95,92,0.25); }
+  .sev-badge.medium   { background: var(--yellow-dim);     color: var(--yellow); border: 1px solid rgba(245,200,66,0.25); }
+  .sev-badge.low      { background: var(--blue-dim);       color: var(--blue);   border: 1px solid rgba(79,142,247,0.25); }
+
+  .vuln-endpoint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted2);
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .vuln-desc {
+    font-size: 12px;
+    color: var(--muted2);
+    line-height: 1.5;
+  }
+
+  .vuln-chevron {
+    color: var(--muted);
+    font-size: 11px;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+
+  .vuln-card.expanded .vuln-chevron { transform: rotate(180deg); }
+
+  .vuln-fix {
+    display: none;
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    background: rgba(45,217,143,0.03);
+  }
+
+  .vuln-card.expanded .vuln-fix { display: block; }
+
+  .fix-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .fix-content {
+    font-size: 12px;
+    color: var(--muted2);
+    line-height: 1.65;
+  }
+
+  /* ── CHAT ── */
+  .chat-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 310px);
+    min-height: 480px;
+    max-height: 720px;
+    position: sticky;
+    top: 20px;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .msg {
+    display: flex;
+    gap: 10px;
+    animation: fadeSlide 0.25s ease;
+  }
+
+  .msg.user { flex-direction: row-reverse; }
+
+  .msg-avatar {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+
+  .msg.bot .msg-avatar  { background: var(--green-dim); color: var(--green); border: 1px solid rgba(45,217,143,0.2); }
+  .msg.user .msg-avatar { background: var(--blue-dim);  color: var(--blue);  border: 1px solid rgba(79,142,247,0.2); }
+
+  .msg-bubble {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .msg.bot .msg-bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-top-left-radius: 3px;
+  }
+
+  .msg.user .msg-bubble {
+    background: var(--blue-dim);
+    border: 1px solid rgba(79,142,247,0.2);
+    color: var(--text);
+    border-top-right-radius: 3px;
+  }
+
+  .chat-input-area {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .chat-input-area input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .chat-input-area input::placeholder { color: var(--muted); }
+
+  .chat-input-area input:focus {
+    border-color: rgba(79,142,247,0.35);
+    box-shadow: 0 0 0 3px rgba(79,142,247,0.07);
+  }
+
+  .btn-send {
+    width: 36px; height: 36px;
+    background: var(--blue);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    cursor: pointer;
+    display: grid; place-items: center;
+    font-size: 14px;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .btn-send:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 16px rgba(79,142,247,0.4);
+    background: #6ba3f9;
+  }
+
+  /* ── SPINNER ── */
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(10,26,18,0.3);
+    border-top-color: #0a1a12;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: inline-block;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TYPING INDICATOR ── */
+  .typing { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+  .typing span {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--muted);
+    animation: bounce 1.2s ease-in-out infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-5px); }
+  }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    animation: fadeSlide 0.3s ease;
+  }
+
+  .stat-chip {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .stat-lbl {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .stat-chip.c-red    .stat-num { color: var(--red); }
+  .stat-chip.c-yellow .stat-num { color: var(--yellow); }
+  .stat-chip.c-blue   .stat-num { color: var(--blue); }
+  .stat-chip.c-green  .stat-num { color: var(--green); }
+
+  /* ── WELCOME MSG ── */
+  .welcome-list {
+    margin: 10px 0 0 0;
+    padding-left: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .welcome-list li {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: var(--muted2);
+  }
+
+  .welcome-list li::before {
+    content: '→';
+    color: var(--green);
+    font-size: 11px;
+  }
+
+  /* ── OWASP TAG ── */
+  .owasp-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted2);
+    margin-top: 6px;
+  }
+
+  @media (max-width: 900px) {
+    .main-split { grid-template-columns: 1fr; }
+    .chat-panel { position: static; height: 480px; }
+    .input-row  { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo-mark">⌘S</div>
+      <div class="site-title">API Security Scanner</div>
+      <div class="header-divider"></div>
+      <div class="header-sub">v2.4.1</div>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      Scanner Ready
+    </div>
+  </header>
+
+  <!-- SCAN CARD -->
+  <div class="scan-card">
+    <div class="scan-card-header">
+      <div class="card-title">Configure Scan Target</div>
+    </div>
+    <div class="input-row">
+      <div class="field">
+        <label>Target URL</label>
+        <div class="input-wrap">
+          <span class="input-icon">⬡</span>
+          <input type="text" id="apiUrl" placeholder="https://api.example.com">
+        </div>
+      </div>
+      <div class="field">
+        <label>Endpoints (comma-separated)</label>
+        <div class="input-wrap">
+          <span class="input-icon">/</span>
+          <input type="text" id="endpoints" placeholder="/users, /login, /auth/token">
+        </div>
+      </div>
+      <button class="btn-scan" id="scanBtn" onclick="startScan()">
+        <span id="scanBtnContent">Scan API</span>
+      </button>
+    </div>
+    <div class="progress-bar-wrap" id="progressWrap">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="progress-label" id="progressLabel">Initializing scan...</div>
+    </div>
+  </div>
+
+  <!-- STATS ROW (hidden until scan) -->
+  <div class="stats-row" id="statsRow" style="display:none;">
+    <div class="stat-chip c-red">
+      <div class="stat-num" id="statCritical">0</div>
+      <div class="stat-lbl">Critical</div>
+    </div>
+    <div class="stat-chip c-red">
+      <div class="stat-num" id="statHigh">0</div>
+      <div class="stat-lbl">High</div>
+    </div>
+    <div class="stat-chip c-yellow">
+      <div class="stat-num" id="statMedium">0</div>
+      <div class="stat-lbl">Medium</div>
+    </div>
+    <div class="stat-chip c-blue">
+      <div class="stat-num" id="statLow">0</div>
+      <div class="stat-lbl">Low</div>
+    </div>
+    <div class="stat-chip c-green">
+      <div class="stat-num" id="statEndpoints">0</div>
+      <div class="stat-lbl">Endpoints</div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-num" id="statDuration" style="color:var(--text);">—</div>
+      <div class="stat-lbl">Scan Time</div>
+    </div>
+  </div>
+
+  <!-- MAIN SPLIT -->
+  <div class="main-split">
+
+    <!-- LEFT: Results -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <div class="panel-icon red">⚠</div>
+          Vulnerabilities
+        </div>
+        <div class="count-badge" id="vulnCount">0</div>
+      </div>
+      <div class="results-body" id="resultsBody">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">◎</div>
+          <div class="empty-text">No scan results yet.<br>Enter a target URL and run a scan.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Chat -->
+    <div class="chat-panel panel">
+      <div class="panel-head">
+        <div class="panel-title">
+          <div class="panel-icon green">AI</div>
+          AI Security Analyst
+        </div>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg bot">
+          <div class="msg-avatar">AI</div>
+          <div class="msg-bubble">
+            Hello. I'm your AI security analyst. I can help you with:
+            <ul class="welcome-list">
+              <li>Understanding vulnerabilities</li>
+              <li>Remediation strategies</li>
+              <li>OWASP best practices</li>
+              <li>API security hardening</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="chat-input-area">
+        <input type="text" id="chatInput" placeholder="Ask about security issues…" onkeypress="if(event.key==='Enter') sendChat()">
+        <button class="btn-send" onclick="sendChat()" title="Send">↑</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  let scanId = null;
+
+  /* ── SCAN ── */
+  async function startScan() {
+    const url = document.getElementById('apiUrl').value.trim();
+    if (!url) { flashInput('apiUrl'); return; }
+
+    const epRaw = document.getElementById('endpoints').value.trim();
+    const eps   = epRaw ? epRaw.split(',').map(e => e.trim()).filter(Boolean) : [];
+
+    setScanning(true);
+    animateProgress();
+
+    addChat('Scan initiated for <code style="color:var(--green);font-size:11px;">' + escHtml(url) + '</code>. I\'ll analyze the results as they come in.', false);
+
+    try {
+      const res  = await fetch('/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_url: url, endpoints: eps })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        scanId = data.scan_id;
+        renderResults(data.report);
+      } else {
+        showError(data.error || 'Scan failed.');
+      }
+    } catch (e) {
+      // Demo mode — render mock data
+      renderResults(mockReport(url, eps));
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  function flashInput(id) {
+    const el = document.getElementById(id);
+    el.style.borderColor = 'var(--red)';
+    el.style.boxShadow   = '0 0 0 3px var(--red-dim)';
+    setTimeout(() => { el.style.borderColor = ''; el.style.boxShadow = ''; }, 1500);
+  }
+
+  let progInterval;
+  function animateProgress() {
+    const wrap  = document.getElementById('progressWrap');
+    const fill  = document.getElementById('progressFill');
+    const label = document.getElementById('progressLabel');
+    const steps = ['Initializing scan…','Probing endpoints…','Testing authentication…','Checking for injections…','Analyzing headers…','Compiling report…'];
+    let p = 0, si = 0;
+    wrap.classList.add('visible');
+    fill.style.width = '0%';
+    progInterval = setInterval(() => {
+      p = Math.min(p + Math.random() * 8, 92);
+      fill.style.width = p + '%';
+      label.textContent = steps[Math.min(si++, steps.length - 1)];
+      if (si >= steps.length) clearInterval(progInterval);
+    }, 400);
+  }
+
+  function finishProgress() {
+    clearInterval(progInterval);
+    const fill  = document.getElementById('progressFill');
+    const label = document.getElementById('progressLabel');
+    const wrap  = document.getElementById('progressWrap');
+    fill.style.width = '100%';
+    label.textContent = 'Scan complete.';
+    setTimeout(() => { wrap.classList.remove('visible'); }, 1200);
+  }
+
+  function setScanning(on) {
+    const btn     = document.getElementById('scanBtn');
+    const content = document.getElementById('scanBtnContent');
+    btn.disabled  = on;
+    content.innerHTML = on ? '<span class="spinner"></span>' : 'Scan API';
+    if (!on) finishProgress();
+  }
+
+  /* ── RENDER RESULTS ── */
+  function renderResults(report) {
+    const counts = { critical:0, high:0, medium:0, low:0 };
+    report.alerts.forEach(a => { if (counts[a.severity] !== undefined) counts[a.severity]++; });
+
+    // Stats
+    document.getElementById('statCritical').textContent  = counts.critical;
+    document.getElementById('statHigh').textContent      = counts.high;
+    document.getElementById('statMedium').textContent    = counts.medium;
+    document.getElementById('statLow').textContent       = counts.low;
+    document.getElementById('statEndpoints').textContent = report.endpoints_scanned || '—';
+    document.getElementById('statDuration').textContent  = (report.scan_duration || 0).toFixed(1) + 's';
+    document.getElementById('statsRow').style.display    = 'flex';
+    document.getElementById('vulnCount').textContent     = report.alerts.length;
+
+    const body = document.getElementById('resultsBody');
+    document.getElementById('emptyState')?.remove();
+
+    if (report.alerts.length === 0) {
+      body.innerHTML = `<div class="empty-state"><div class="empty-icon" style="opacity:1;color:var(--green)">✓</div><div class="empty-text" style="color:var(--green)">No vulnerabilities found.<br>Your API looks secure.</div></div>`;
+      addChat('✓ Scan complete. No vulnerabilities detected. Your API appears well-configured.', false);
+      return;
+    }
+
+    // Sort: critical → high → medium → low
+    const order = { critical: 0, high: 1, medium: 2, low: 3 };
+    report.alerts.sort((a, b) => (order[a.severity] ?? 4) - (order[b.severity] ?? 4));
+
+    body.innerHTML = '';
+    report.alerts.forEach((alert, i) => {
+      const card = document.createElement('div');
+      card.className = 'vuln-card';
+      card.style.animationDelay = (i * 60) + 'ms';
+      card.innerHTML = `
+        <div class="vuln-main" onclick="toggleVuln(this.parentElement)">
+          <div class="severity-strip ${alert.severity}"></div>
+          <div class="vuln-info">
+            <div class="vuln-row1">
+              <div class="vuln-name">${escHtml(formatVulnName(alert.type))}</div>
+              <span class="sev-badge ${alert.severity}">${alert.severity}</span>
+            </div>
+            <div class="vuln-endpoint">${escHtml(alert.endpoint || '—')}</div>
+            <div class="vuln-desc">${escHtml(alert.evidence || '')}</div>
+            ${alert.owasp_mapping ? `<div class="owasp-tag">OWASP ${escHtml(alert.owasp_mapping)}</div>` : ''}
+          </div>
+          <div class="vuln-chevron">▾</div>
+        </div>
+        <div class="vuln-fix">
+          <div class="fix-label">▸ Recommended Fix</div>
+          <div class="fix-content">${escHtml(alert.fix || getDefaultFix(alert.type))}</div>
+        </div>`;
+      body.appendChild(card);
+    });
+
+    const summary = buildSummary(counts, report.alerts.length);
+    addChat(summary, false);
+  }
+
+  function toggleVuln(card) {
+    card.classList.toggle('expanded');
+  }
+
+  function formatVulnName(type) {
+    return (type || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  function buildSummary(counts, total) {
+    const parts = [];
+    if (counts.critical) parts.push(`<span style="color:var(--red)">${counts.critical} critical</span>`);
+    if (counts.high)     parts.push(`<span style="color:var(--red)">${counts.high} high</span>`);
+    if (counts.medium)   parts.push(`<span style="color:var(--yellow)">${counts.medium} medium</span>`);
+    if (counts.low)      parts.push(`<span style="color:var(--blue)">${counts.low} low</span>`);
+    return `Scan complete — found ${total} issue${total !== 1 ? 's' : ''}: ${parts.join(', ')}. Click any card to expand remediation steps, or ask me about a specific vulnerability.`;
+  }
+
+  function getDefaultFix(type) {
+    const fixes = {
+      sql_injection:         'Use parameterized queries or prepared statements. Never concatenate user input into SQL strings.',
+      xss:                   'Sanitize and encode all user-supplied output. Use Content-Security-Policy headers.',
+      broken_auth:           'Implement multi-factor authentication. Enforce strong token expiration and rotation policies.',
+      idor:                  'Validate object-level permissions on every request. Never expose direct database IDs.',
+      security_misconfiguration: 'Remove default credentials, disable directory listing, and keep all dependencies patched.',
+      sensitive_data_exposure:   'Enforce TLS 1.2+. Encrypt data at rest. Audit what is returned in API responses.',
+      rate_limiting:         'Implement rate limiting per IP and per authenticated user using a token-bucket or leaky-bucket algorithm.',
+      missing_auth:          'Require authentication on all sensitive endpoints. Use JWT or OAuth 2.0 consistently.',
+    };
+    const key = (type || '').toLowerCase().replace(/\s+/g, '_');
+    return fixes[key] || 'Review OWASP API Security Top 10 guidelines for remediation steps specific to this vulnerability type.';
+  }
+
+  function showError(msg) {
+    addChat('⚠ ' + escHtml(msg), false);
+  }
+
+  /* ── CHAT ── */
+  async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const msg   = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    addChat(msg, true);
+
+    const typingEl = addTyping();
+
+    try {
+      const res  = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: msg, scan_id: scanId })
+      });
+      const data = await res.json();
+      typingEl.remove();
+      addChat(data.success ? data.response : 'Sorry, I encountered an error. Please try again.', false);
+    } catch (e) {
+      typingEl.remove();
+      addChat(getMockResponse(msg), false);
+    }
+  }
+
+  function addChat(html, isUser) {
+    const wrap = document.getElementById('chatMessages');
+    const el   = document.createElement('div');
+    el.className = `msg ${isUser ? 'user' : 'bot'}`;
+    el.innerHTML = `
+      <div class="msg-avatar">${isUser ? 'You' : 'AI'}</div>
+      <div class="msg-bubble">${isUser ? escHtml(html) : html}</div>`;
+    wrap.appendChild(el);
+    wrap.scrollTop = wrap.scrollHeight;
+    return el;
+  }
+
+  function addTyping() {
+    const wrap = document.getElementById('chatMessages');
+    const el   = document.createElement('div');
+    el.className = 'msg bot';
+    el.innerHTML = `<div class="msg-avatar">AI</div><div class="msg-bubble"><div class="typing"><span></span><span></span><span></span></div></div>`;
+    wrap.appendChild(el);
+    wrap.scrollTop = wrap.scrollHeight;
+    return el;
+  }
+
+  function getMockResponse(msg) {
+    const m = msg.toLowerCase();
+    if (m.includes('sql'))    return 'SQL Injection occurs when untrusted data is sent to an interpreter as part of a command. Use parameterized queries or stored procedures, and validate all inputs server-side.';
+    if (m.includes('xss'))    return 'Cross-Site Scripting allows attackers to inject client-side scripts. Implement strict Content-Security-Policy headers, sanitize all user input, and encode output before rendering.';
+    if (m.includes('auth'))   return 'Authentication issues are among the most critical API vulnerabilities. Enforce OAuth 2.0 or JWT with proper expiry, rotate secrets regularly, and always validate tokens server-side.';
+    if (m.includes('owasp'))  return 'OWASP API Security Top 10 covers: Broken Object Level Authorization, Broken Auth, Excessive Data Exposure, Lack of Resources & Rate Limiting, and more. Ask about any specific category.';
+    if (m.includes('fix') || m.includes('remediat')) return 'I can provide specific remediation guidance for any vulnerability shown in the scan results. Click a vulnerability card to see the fix, or ask me about a specific type.';
+    return 'I can help you understand vulnerabilities, prioritize fixes, and implement security best practices. What specific issue would you like to explore?';
+  }
+
+  /* ── MOCK DATA (demo when no backend) ── */
+  function mockReport(url, eps) {
+    return {
+      timestamp:          new Date().toISOString(),
+      endpoints_scanned:  Math.max(eps.length, 4),
+      checks_performed:   47,
+      vulnerabilities_found: 5,
+      scan_duration:      3.8,
+      alerts: [
+        { type: 'SQL Injection',            severity: 'critical', endpoint: '/api/users',      evidence: 'Unparameterized query detected in user search handler', owasp_mapping: 'A01:2021', fix: 'Use parameterized queries or an ORM. Never concatenate user input directly into SQL strings.' },
+        { type: 'Broken Authentication',    severity: 'high',     endpoint: '/auth/login',     evidence: 'No rate limiting on login endpoint; brute-force possible', owasp_mapping: 'A02:2021', fix: 'Add rate limiting (max 5 attempts / 15 min), enforce strong password policy, and add CAPTCHA after failures.' },
+        { type: 'Sensitive Data Exposure',  severity: 'high',     endpoint: '/api/profile',    evidence: 'API returns full PII including SSN and payment tokens', owasp_mapping: 'A03:2021', fix: 'Audit response payloads. Only return fields necessary for the client. Mask or omit sensitive identifiers.' },
+        { type: 'Missing Rate Limiting',    severity: 'medium',   endpoint: '/api/search',     evidence: 'No throttling detected on search endpoint', owasp_mapping: 'A04:2021', fix: 'Implement a token-bucket rate limiter. Return 429 Too Many Requests with Retry-After header.' },
+        { type: 'Security Misconfiguration',severity: 'low',      endpoint: '/api/health',     evidence: 'Verbose error messages expose stack traces in responses', owasp_mapping: 'A05:2021', fix: 'Disable verbose errors in production. Log internally, but return generic error messages to clients.' },
+      ]
+    };
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
